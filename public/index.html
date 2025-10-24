@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coaching Admission Form</title>
 <style>
-/* your same CSS */
 body { background-color: #f0f0f0; font-size: 16px; font-family: Arial, sans-serif; padding: 20px; }
 #pdf-frame { width: 100%; height: 600px; border: none; display: none; margin-top: 20px; }
 form { background: white; padding: 20px; border-radius: 10px; max-width: 900px; margin: auto; box-shadow: 0 0 10px #ccc; display: none; }
@@ -59,7 +58,6 @@ th, td { padding: 8px; text-align: left; }
   <h2>Admission Form</h2>
   <h2>G10 EDUCATIONAL PLATFORM</h2>
 
-  <!-- same form fields as before -->
   <div class="form-grid">
     <div class="full-width"><label>Full Name:</label><input type="text" name="name" required></div>
     <div><label>Email:</label><input type="email" name="email" required></div>
@@ -137,18 +135,19 @@ function showForm(){
   document.getElementById('pdf-frame').style.display = 'none';
   document.getElementById('thank-you').style.display = 'none';
 }
-  let validPhoto=false;
+
+let validPhoto = false;
 function previewPhoto(e){
-  const file=e.target.files[0];
-  const preview=document.getElementById('photo-preview');
-  validPhoto=false;
+  const file = e.target.files[0];
+  const preview = document.getElementById('photo-preview');
+  validPhoto = false;
   if(file){
-    if(file.size>80*1024){ alert("File size exceeds 80 KB."); e.target.value=""; preview.src=""; preview.style.display="none"; return;}
-    validPhoto=true;
-    const reader=new FileReader();
-    reader.onload=ev=>{preview.src=ev.target.result; preview.style.display='block';}
+    if(file.size > 80*1024){ alert("File size exceeds 80 KB."); e.target.value=""; preview.src=""; preview.style.display="none"; return; }
+    validPhoto = true;
+    const reader = new FileReader();
+    reader.onload = ev => { preview.src = ev.target.result; preview.style.display = 'block'; }
     reader.readAsDataURL(file);
-  } else {preview.src=""; preview.style.display='none';}
+  } else { preview.src = ""; preview.style.display = 'none'; }
 }
 
 // ✅ Cashfree Payment Integration
@@ -165,7 +164,6 @@ document.getElementById("payNowBtn").addEventListener("click", async () => {
 
   if (!name || !email) return alert("Please enter your name and email before payment.");
 
-  // Create order using backend
   const res = await fetch("https://admision-from-2.onrender.com/pay", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -176,18 +174,19 @@ document.getElementById("payNowBtn").addEventListener("click", async () => {
 
   if (data?.success && data?.paymentLink) {
     localStorage.setItem("pendingOrderId", data.orderId);
-    window.location.href = data.paymentLink; // Redirect to Cashfree
+    window.location.href = data.paymentLink;
   } else {
     alert("Payment creation failed. Please try again.");
   }
 });
 
-// ✅ When Cashfree redirects back after payment success
+// ✅ Verify payment after redirect
 window.addEventListener("load", async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const orderId = urlParams.get("order_id");
 
-  if (orderId) {https://admision-from-2.onrender.com/verify-payment", {
+  if (orderId) {
+    const verify = await fetch("https://admision-from-2.onrender.com/verify-payment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId })
