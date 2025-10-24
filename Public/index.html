@@ -159,7 +159,7 @@ document.getElementById("payNowBtn").addEventListener("click", async () => {
   if (!name || !email) return alert("Please enter your name and email before payment.");
 
   // Create order using backend
-  const res = await fetch("https://admision-from.onrender.com/pay", {
+  const res = await fetch("https://admision-from-2.onrender.com/pay", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount, name, email })
@@ -180,8 +180,7 @@ window.addEventListener("load", async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const orderId = urlParams.get("order_id");
 
-  if (orderId) {
-    const verify = await fetch("https://admision-from.onrender.com/verify-payment", {
+  if (orderId) {https://admision-from-2.onrender.com/verify-payment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId })
