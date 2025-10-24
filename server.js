@@ -1,60 +1,125 @@
-// server.js
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import bodyParser from "body-parser";
 import fetch from "node-fetch";
+import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
 dotenv.config();
-const app = express();
-app.use(cors());
-app.use(express.json());
 
-// For serving static frontend
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+// ✅ Serve your frontend files
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ Cashfree payment verification
+// ✅ Use environment variables
+const PORT = process.env.PORT || 5000;
+const CASHFREE_APP_ID = process.env.App_ID;
+const CASHFREE_SECRET_KEY = process.env.Secret_Key;
+const CASHFREE_API_BASE = "https://sandbox.cashfree.com/pg/orders";
+
+// ✅ Generate random access code (G10-XXXXX)
+function generateAccessCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "G10-";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// ✅ Create new Cashfree order
+app.post("/create-order", async (req, res) => {
+  try {
+    const { name, email, phone, amount } = req.body;
+
+    if (!name || !email || !phone || !amount) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const orderData = {
+      customer_details: {
+        customer_id: "CUST_" + Date.now(),
+        customer_name: name,
+        customer_email: email,
+        customer_phone: phone,
+      },
+      order_amount: amount,
+      order_currency: "INR",
+      order_note: "Admission Payment",
+      order_id: "ORDER_" + Date.now(),
+    };
+
+    const response = await fetch(CASHFREE_API_BASE, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-client-id": CASHFREE_APP_ID,
+        "x-client-secret": CASHFREE_SECRET_KEY,
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    const data = await response.json();
+    console.log("🟢 Cashfree Order Response:", data);
+
+    if (data.order_status === "ACTIVE") {
+      res.json({
+        orderId: data.order_id,
+        paymentSessionId: data.payment_session_id,
+      });
+    } else {
+      res.status(400).json({ error: "Failed to create order", data });
+    }
+  } catch (error) {
+    console.error("❌ Error creating order:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ✅ Verify payment and generate access code
 app.post("/verify-payment", async (req, res) => {
   try {
-    const { order_id } = req.body;
+    const { orderId } = req.body;
 
-    if (!order_id) return res.status(400).json({ success: false, message: "Missing order_id" });
-
-    const authHeader = Buffer.from(`${process.env.App_ID}:${process.env.Secret_Key}`).toString("base64");
-
-    const response = await fetch(`https://sandbox.cashfree.com/pg/orders/${order_id}`, {
-      method: "GET",
+    const response = await fetch(`${CASHFREE_API_BASE}/${orderId}`, {
       headers: {
-        Authorization: `Basic ${authHeader}`,
-        "Content-Type": "application/json",
+        "x-client-id": CASHFREE_APP_ID,
+        "x-client-secret": CASHFREE_SECRET_KEY,
       },
     });
 
     const data = await response.json();
+    console.log("🟢 Payment Verification:", data);
 
     if (data.order_status === "PAID") {
-      const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      return res.json({
+      const accessCode = generateAccessCode();
+      res.json({
         success: true,
-        accessCode: `G10-${randomCode}`,
-        message: "Payment verified successfully ✅",
+        message: "Payment successful",
+        accessCode: accessCode,
       });
+    } else {
+      res.json({ success: false, message: "Payment not completed yet" });
     }
-
-    res.status(400).json({ success: false, message: "Payment not completed yet" });
   } catch (error) {
-    console.error("Error verifying payment:", error);
-    res.status(500).json({ success: false, message: "Server error verifying payment" });
+    console.error("❌ Error verifying payment:", error);
+    res.status(500).json({ error: "Verification failed" });
   }
 });
 
-// ✅ Home route
+// ✅ Default route
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.send("✅ Cashfree Payment Server is running successfully!");
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// ✅ Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
